@@ -1,5 +1,6 @@
 # Arquivos de configuração
-config/config.php
+includes/config.php
+config/database.php
 
 # Arquivos de backup
 backups/*.sql
@@ -13,6 +14,7 @@ backups/*.sql
 
 # Arquivos de log
 *.log
+logs/*
 
 # Arquivos de ambiente
 .env
