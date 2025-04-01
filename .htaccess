@@ -1,0 +1,19 @@
+Options -Indexes
+RewriteEngine On
+
+# Permitir acesso direto a arquivos existentes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirecionar todas as outras requisições para o index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Configurar o diretório base
+<IfModule mod_rewrite.c>
+    RewriteBase /gesp/
+</IfModule>
+
+# Configurar tipos MIME
+AddType application/javascript .js
+AddType text/css .css
+AddType image/svg+xml .svg 

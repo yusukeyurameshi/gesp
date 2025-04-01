@@ -1,0 +1,22 @@
+# Arquivos de configuração
+config/config.php
+
+# Arquivos de backup
+backups/*.sql
+
+# Arquivos de sessão
+*.sess
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos de log
+*.log
+
+# Arquivos de ambiente
+.env
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db 
