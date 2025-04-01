@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 requireLogin();
-requireAdmin();
+//requireAdmin();
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id'])) {
