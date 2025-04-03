@@ -16,18 +16,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $erros[] = "O nome não pode ter mais que 100 caracteres";
         }
 
-        if (empty($_POST['email'])) {
-            $erros[] = "O e-mail é obrigatório";
-        } elseif (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-            $erros[] = "E-mail inválido";
-        } elseif (strlen($_POST['email']) > 100) {
-            $erros[] = "O e-mail não pode ter mais que 100 caracteres";
+        if (empty($_POST['username'])) {
+            $erros[] = "O usuário é obrigatório";
+        } elseif (strlen($_POST['username']) > 50) {
+            $erros[] = "O usuário não pode ter mais que 50 caracteres";
         } else {
-            // Verificar se o e-mail já existe
-            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE email = ?");
-            $stmt->execute([$_POST['email']]);
+            // Verificar se o usuário já existe
+            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE username = ?");
+            $stmt->execute([$_POST['username']]);
             if ($stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0) {
-                $erros[] = "Este e-mail já está em uso";
+                $erros[] = "Este usuário já está em uso";
             }
         }
 
@@ -49,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($erros)) {
             $senha_hash = password_hash($_POST['senha'], PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, cargo) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$_POST['nome'], $_POST['email'], $senha_hash, $_POST['cargo']]);
+            $stmt = $pdo->prepare("INSERT INTO usuarios (nome, username, senha, cargo) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$_POST['nome'], $_POST['username'], $senha_hash, $_POST['cargo']]);
             
             header('Location: /gesp/pages/usuarios.php?mensagem=Usuário cadastrado com sucesso!');
             exit;
@@ -114,7 +112,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <thead>
                             <tr>
                                 <th>Nome</th>
-                                <th>E-mail</th>
+                                <th>Usuário</th>
                                 <th>Cargo</th>
                                 <th>Ações</th>
                             </tr>
@@ -123,7 +121,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php foreach ($usuarios as $usuario): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($usuario['nome']); ?></td>
-                                <td><?php echo htmlspecialchars($usuario['email']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['username']); ?></td>
                                 <td><?php echo htmlspecialchars($usuario['cargo']); ?></td>
                                 <td>
                                     <a href="/gesp/pages/editar_usuario.php?id=<?php echo $usuario['usuario_id']; ?>" class="btn btn-sm btn-primary">Editar</a>
@@ -153,8 +151,8 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <input type="text" class="form-control" id="nome" name="nome" required maxlength="100">
                         </div>
                         <div class="mb-3">
-                            <label for="email" class="form-label">E-mail</label>
-                            <input type="email" class="form-control" id="email" name="email" required maxlength="100">
+                            <label for="username" class="form-label">Usuário</label>
+                            <input type="text" class="form-control" id="username" name="username" required maxlength="50">
                         </div>
                         <div class="mb-3">
                             <label for="cargo" class="form-label">Cargo</label>

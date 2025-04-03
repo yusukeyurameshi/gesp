@@ -31,18 +31,16 @@ try {
             $erros[] = "O nome não pode ter mais que 100 caracteres";
         }
 
-        if (empty($_POST['email'])) {
-            $erros[] = "O e-mail é obrigatório";
-        } elseif (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-            $erros[] = "E-mail inválido";
-        } elseif (strlen($_POST['email']) > 100) {
-            $erros[] = "O e-mail não pode ter mais que 100 caracteres";
+        if (empty($_POST['username'])) {
+            $erros[] = "O usuário é obrigatório";
+        } elseif (strlen($_POST['username']) > 50) {
+            $erros[] = "O usuário não pode ter mais que 50 caracteres";
         } else {
-            // Verificar se o e-mail já existe para outro usuário
-            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE email = ? AND usuario_id != ?");
-            $stmt->execute([$_POST['email'], $usuario_id]);
+            // Verificar se o usuário já existe para outro usuário
+            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE username = ? AND usuario_id != ?");
+            $stmt->execute([$_POST['username'], $usuario_id]);
             if ($stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0) {
-                $erros[] = "Este e-mail já está em uso";
+                $erros[] = "Este usuário já está em uso";
             }
         }
 
@@ -64,8 +62,8 @@ try {
 
         if (empty($erros)) {
             // Preparar a query base
-            $query = "UPDATE usuarios SET nome = ?, email = ?, cargo = ?";
-            $params = [$_POST['nome'], $_POST['email'], $_POST['cargo']];
+            $query = "UPDATE usuarios SET nome = ?, username = ?, cargo = ?";
+            $params = [$_POST['nome'], $_POST['username'], $_POST['cargo']];
 
             // Se uma nova senha foi fornecida, adicionar à query
             if (!empty($_POST['senha'])) {
@@ -122,8 +120,8 @@ try {
                         <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($usuario['nome']); ?>" required maxlength="100">
                     </div>
                     <div class="mb-3">
-                        <label for="email" class="form-label">E-mail</label>
-                        <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($usuario['email']); ?>" required maxlength="100">
+                        <label for="username" class="form-label">Usuário</label>
+                        <input type="text" class="form-control" id="username" name="username" value="<?php echo htmlspecialchars($usuario['username']); ?>" required maxlength="50">
                     </div>
                     <div class="mb-3">
                         <label for="cargo" class="form-label">Cargo</label>

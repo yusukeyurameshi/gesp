@@ -1,5 +1,6 @@
 <?php
-require_once 'includes/config.php';
+session_start();
+require_once 'includes/db_connection.php';
 
 // Se já estiver logado, redireciona para o dashboard
 if (isLoggedIn()) {
@@ -10,33 +11,22 @@ if (isLoggedIn()) {
 $erro = '';
 
 // Processar o formulário de login
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = $_POST['email'] ?? '';
-    $senha = $_POST['senha'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $senha = $_POST['senha'];
 
-    if (empty($email) || empty($senha)) {
-        $erro = 'Por favor, preencha todos os campos.';
+    $stmt = $pdo->prepare("SELECT usuario_id, nome, perfil FROM usuarios WHERE username = ? AND senha = ?");
+    $stmt->execute([$username, md5($senha)]);
+    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($usuario) {
+        $_SESSION['usuario_id'] = $usuario['usuario_id'];
+        $_SESSION['nome'] = $usuario['nome'];
+        $_SESSION['perfil'] = $usuario['perfil'];
+        header('Location: pages/index.php');
+        exit;
     } else {
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
-            $stmt->execute([$email]);
-            $usuario = $stmt->fetch();
-
-            if ($usuario && password_verify($senha, $usuario['senha'])) {
-                $_SESSION['usuario_id'] = $usuario['usuario_id'];
-                $_SESSION['usuario_nome'] = $usuario['nome'];
-                $_SESSION['usuario_cargo'] = $usuario['cargo'];
-                
-                header('Location: /gesp/index.php');
-                exit;
-            } else {
-                $erro = 'Email ou senha inválidos.';
-            }
-        } catch(PDOException $e) {
-            $erro = 'Erro ao fazer login. Tente novamente.';
-            header('Location: /gesp/login.php?erro=' . urlencode($e->getMessage()));
-            exit;
-        }
+        $erro = "Usuário ou senha inválidos";
     }
 }
 ?>
@@ -62,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <form method="POST" action="">
                             <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                                <label for="username" class="form-label">Usuário</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
                             </div>
                             <div class="mb-3">
                                 <label for="senha" class="form-label">Senha</label>

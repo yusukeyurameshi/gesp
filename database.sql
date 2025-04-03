@@ -44,9 +44,9 @@ CREATE TABLE IF NOT EXISTS produtos (
 CREATE TABLE IF NOT EXISTS usuarios (
     usuario_id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    username VARCHAR(50) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL,
-    cargo VARCHAR(50) NOT NULL,
+    perfil ENUM('Administrador', 'Colaborador', 'Leitor') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -81,8 +81,8 @@ INSERT INTO unidades (nome, sigla) VALUES
 
 
 -- Inserir usuário padrão (senha: admin123)
-INSERT INTO usuarios (nome, email, senha, cargo) VALUES
-('Administrador', 'admin@admin.com', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador'); 
+INSERT INTO usuarios (nome, username, senha, perfil) VALUES
+('Administrador', 'admin', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador'); 
 
 INSERT INTO localizacoes (nome, descricao) VALUES
 ('Prateleira A1', 'Prateleira A, posição 1'),
@@ -108,8 +108,6 @@ INSERT INTO produtos (codigo, nome, quantidade, quantidade_minima, unidade_id, l
 ('P008', 'Papel Higiênico', 30.00, 6.00, 7, 8),
 ('P009', 'Papel Toalha', 20.00, 4.00, 8, 9),
 ('P010', 'Fita Adesiva', 15.00, 3.00, 9, 10);
-
--- Inserir localizações padrão
 
 -- Inserir movimentações de exemplo
 INSERT INTO movimentacoes (produto_id, quantidade, tipo, data, observacao, usuario_id) VALUES
