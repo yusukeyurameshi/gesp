@@ -5,56 +5,81 @@ requireLogin();
 requireAdmin();
 
 // Processar formulário de cadastro
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // Validações
-        $erros = [];
-        
-        if (empty($_POST['nome'])) {
-            $erros[] = "O nome é obrigatório";
-        } elseif (strlen($_POST['nome']) > 100) {
-            $erros[] = "O nome não pode ter mais que 100 caracteres";
-        }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cadastrar'])) {
+    $erros = [];
+    
+    if (empty($_POST['nome'])) {
+        $erros[] = "O nome é obrigatório";
+    } elseif (strlen($_POST['nome']) > 100) {
+        $erros[] = "O nome não pode ter mais que 100 caracteres";
+    }
 
-        if (empty($_POST['username'])) {
-            $erros[] = "O usuário é obrigatório";
-        } elseif (strlen($_POST['username']) > 50) {
-            $erros[] = "O usuário não pode ter mais que 50 caracteres";
-        } else {
-            // Verificar se o usuário já existe
-            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE username = ?");
-            $stmt->execute([$_POST['username']]);
-            if ($stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0) {
-                $erros[] = "Este usuário já está em uso";
-            }
+    if (empty($_POST['username'])) {
+        $erros[] = "O usuário é obrigatório";
+    } elseif (strlen($_POST['username']) > 50) {
+        $erros[] = "O usuário não pode ter mais que 50 caracteres";
+    } else {
+        // Verificar se o usuário já existe
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM usuarios WHERE username = ?");
+        $stmt->execute([$_POST['username']]);
+        if ($stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0) {
+            $erros[] = "Este usuário já está em uso";
         }
+    }
 
-        if (empty($_POST['cargo'])) {
-            $erros[] = "O cargo é obrigatório";
-        } elseif (strlen($_POST['cargo']) > 100) {
-            $erros[] = "O cargo não pode ter mais que 100 caracteres";
-        }
+    if (empty($_POST['senha'])) {
+        $erros[] = "A senha é obrigatória";
+    } elseif (strlen($_POST['senha']) < 6) {
+        $erros[] = "A senha deve ter no mínimo 6 caracteres";
+    } elseif ($_POST['senha'] !== $_POST['confirmar_senha']) {
+        $erros[] = "As senhas não conferem";
+    }
 
-        if (empty($_POST['senha'])) {
-            $erros[] = "A senha é obrigatória";
-        } elseif (strlen($_POST['senha']) < 6) {
-            $erros[] = "A senha deve ter no mínimo 6 caracteres";
-        }
+    if (empty($_POST['perfil'])) {
+        $erros[] = "O perfil é obrigatório";
+    } elseif (!in_array($_POST['perfil'], ['Administrador', 'Colaborador', 'Leitor'])) {
+        $erros[] = "Perfil inválido";
+    }
 
-        if ($_POST['senha'] !== $_POST['confirmar_senha']) {
-            $erros[] = "As senhas não conferem";
-        }
-
-        if (empty($erros)) {
-            $senha_hash = password_hash($_POST['senha'], PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO usuarios (nome, username, senha, cargo) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$_POST['nome'], $_POST['username'], $senha_hash, $_POST['cargo']]);
-            
+    if (empty($erros)) {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO usuarios (nome, username, senha, perfil, ativo) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $_POST['nome'], 
+                $_POST['username'], 
+                password_hash($_POST['senha'], PASSWORD_DEFAULT), 
+                $_POST['perfil'],
+                1 // Usuários novos são sempre ativos
+            ]);
             header('Location: /gesp/pages/usuarios.php?mensagem=Usuário cadastrado com sucesso!');
             exit;
+        } catch (PDOException $e) {
+            $erros[] = "Erro ao cadastrar usuário: " . $e->getMessage();
         }
-    } catch(PDOException $e) {
-        $erros[] = "Erro ao cadastrar usuário: " . $e->getMessage();
+    }
+}
+
+// Processar alteração de status
+if (isset($_GET['toggle_status']) && isset($_GET['id'])) {
+    $id = $_GET['id'];
+    $novo_status = $_GET['toggle_status'] === '1' ? 0 : 1;
+    
+    // Não permitir que o usuário desative seu próprio perfil
+    if ($id == $_SESSION['usuario_id']) {
+        header('Location: /gesp/pages/usuarios.php?erro=Não é possível desativar seu próprio usuário');
+        exit;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = ? WHERE usuario_id = ?");
+        $stmt->execute([$novo_status, $id]);
+        
+        $status_texto = $novo_status ? 'ativado' : 'desativado';
+        header('Location: /gesp/pages/usuarios.php?mensagem=Usuário ' . $status_texto . ' com sucesso!');
+        exit;
+    } catch (PDOException $e) {
+        header('Location: /gesp/pages/usuarios.php?erro=Erro ao alterar status do usuário: ' . urlencode($e->getMessage()));
+        exit;
     }
 }
 
@@ -76,7 +101,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Usuários</h1>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalUsuario">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
                 Novo Usuário
             </button>
         </div>
@@ -113,7 +138,8 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <tr>
                                 <th>Nome</th>
                                 <th>Usuário</th>
-                                <th>Cargo</th>
+                                <th>Perfil</th>
+                                <th>Status</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -122,10 +148,21 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <tr>
                                 <td><?php echo htmlspecialchars($usuario['nome']); ?></td>
                                 <td><?php echo htmlspecialchars($usuario['username']); ?></td>
-                                <td><?php echo htmlspecialchars($usuario['cargo']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['perfil']); ?></td>
+                                <td>
+                                    <span class="badge bg-<?php echo $usuario['ativo'] ? 'success' : 'danger'; ?>">
+                                        <?php echo $usuario['ativo'] ? 'Ativo' : 'Inativo'; ?>
+                                    </span>
+                                </td>
                                 <td>
                                     <a href="/gesp/pages/editar_usuario.php?id=<?php echo $usuario['usuario_id']; ?>" class="btn btn-sm btn-primary">Editar</a>
-                                    <a href="/gesp/pages/excluir_usuario.php?id=<?php echo $usuario['usuario_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">Excluir</a>
+                                    <?php if ($usuario['usuario_id'] != $_SESSION['usuario_id']): ?>
+                                        <a href="/gesp/pages/usuarios.php?toggle_status=<?php echo $usuario['ativo'] ? '1' : '0'; ?>&id=<?php echo $usuario['usuario_id']; ?>" 
+                                           class="btn btn-sm <?php echo $usuario['ativo'] ? 'btn-danger' : 'btn-success'; ?>"
+                                           onclick="return confirm('Tem certeza que deseja <?php echo $usuario['ativo'] ? 'desativar' : 'ativar'; ?> este usuário?')">
+                                            <?php echo $usuario['ativo'] ? 'Desativar' : 'Ativar'; ?>
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -137,15 +174,15 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <!-- Modal de Cadastro -->
-    <div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal fade" id="cadastroModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Usuário</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form method="POST" action="">
+                <form method="POST">
+                    <div class="modal-body">
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="nome" name="nome" required maxlength="100">
@@ -155,10 +192,6 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <input type="text" class="form-control" id="username" name="username" required maxlength="50">
                         </div>
                         <div class="mb-3">
-                            <label for="cargo" class="form-label">Cargo</label>
-                            <input type="text" class="form-control" id="cargo" name="cargo" required maxlength="100">
-                        </div>
-                        <div class="mb-3">
                             <label for="senha" class="form-label">Senha</label>
                             <input type="password" class="form-control" id="senha" name="senha" required minlength="6">
                         </div>
@@ -166,10 +199,21 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <label for="confirmar_senha" class="form-label">Confirmar Senha</label>
                             <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" required minlength="6">
                         </div>
-                        <button type="submit" class="btn btn-primary">Cadastrar</button>
+                        <div class="mb-3">
+                            <label for="perfil" class="form-label">Perfil</label>
+                            <select class="form-select" id="perfil" name="perfil" required>
+                                <option value="">Selecione um perfil</option>
+                                <option value="Administrador">Administrador</option>
+                                <option value="Colaborador">Colaborador</option>
+                                <option value="Leitor">Leitor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    </form>
-                </div>
+                        <button type="submit" name="cadastrar" class="btn btn-primary">Cadastrar</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

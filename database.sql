@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     username VARCHAR(50) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL,
     perfil ENUM('Administrador', 'Colaborador', 'Leitor') NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -81,8 +82,8 @@ INSERT INTO unidades (nome, sigla) VALUES
 
 
 -- Inserir usuário padrão (senha: admin123)
-INSERT INTO usuarios (nome, username, senha, perfil) VALUES
-('Administrador', 'admin', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador'); 
+INSERT INTO usuarios (nome, username, senha, perfil, ativo) VALUES
+('Administrador', 'admin', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador', TRUE); 
 
 INSERT INTO localizacoes (nome, descricao) VALUES
 ('Prateleira A1', 'Prateleira A, posição 1'),

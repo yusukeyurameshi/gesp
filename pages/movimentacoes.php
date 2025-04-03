@@ -8,6 +8,8 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Processar formulário de movimentação
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
+    requireMovimentacaoPermission();
+    
     $produto_id = intval($_POST['produto_id']);
     $quantidade = floatval($_POST['quantidade']);
     $tipo = $_POST['tipo'];
@@ -71,6 +73,9 @@ $stmt = $pdo->query("
     ORDER BY m.data DESC, m.movimentacao_id DESC
 ");
 $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Verificar se o usuário tem permissão para criar movimentações
+$pode_movimentar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -86,9 +91,11 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Movimentações</h1>
+            <?php if ($pode_movimentar): ?>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#movimentacaoModal">
                 Nova Movimentação
             </button>
+            <?php endif; ?>
         </div>
 
         <?php if (isset($_GET['mensagem'])): ?>
@@ -147,6 +154,7 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <?php if ($pode_movimentar): ?>
     <!-- Modal de Movimentação -->
     <div class="modal fade" id="movimentacaoModal" tabindex="-1">
         <div class="modal-dialog">
@@ -192,6 +200,7 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

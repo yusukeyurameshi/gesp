@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 requireLogin();
+requireEditPermission();
 
 if (!isset($_GET['id'])) {
     header('Location: /gesp/pages/produtos.php?erro=ID não fornecido');
