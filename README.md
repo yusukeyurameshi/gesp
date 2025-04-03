@@ -90,6 +90,3 @@ gesp/
 
 Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
-## Suporte
-
-Para suporte, envie um email para seu-email@exemplo.com ou abra uma issue no GitHub. 
