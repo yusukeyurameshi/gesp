@@ -20,6 +20,17 @@ function requireAdmin() {
     }
 }
 
+
+// Função para verificar se o usuário é administrador
+//function requireAdmin() {
+//    requireLogin();
+//    if ($_SESSION['perfil'] !== 'Administrador') {
+//        header('Location: /gesp/pages/index.php?erro=Você não tem permissão para acessar esta página');
+//        exit;
+//    }
+//}
+
+
 // Função para verificar se o usuário é administrador (retorna true/false)
 function isAdmin() {
     if (!isset($_SESSION['usuario_id'])) {

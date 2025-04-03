@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Buscar unidades
-$stmt = $pdo->query("SELECT * FROM unidades ORDER BY nome");
+$stmt = $pdo->query("SELECT unidade_id, nome, sigla, created_at FROM unidades ORDER BY nome");
 $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
