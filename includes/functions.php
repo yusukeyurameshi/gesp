@@ -1,6 +1,4 @@
 <?php
-// Função para verificar se o usuário está logado
-//function requireLogin() {
 
 // Função para verificar se o usuário é administrador
 function requireAdmin() {
