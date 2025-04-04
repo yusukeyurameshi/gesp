@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 requireLogin();
+requireEditPermission();
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id'])) {

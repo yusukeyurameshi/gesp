@@ -4,6 +4,8 @@ requireLogin();
 
 // Processar formulário de cadastro
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cadastrar'])) {
+    requireEditPermission();
+    
     $codigo = trim($_POST['codigo']);
     $nome = trim($_POST['nome']);
     $quantidade = floatval($_POST['quantidade']);
@@ -49,6 +51,9 @@ $stmt = $pdo->query("
     ORDER BY p.nome
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Verificar se o usuário tem permissão para editar
+$pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -64,9 +69,11 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Produtos</h1>
+            <?php if ($pode_editar): ?>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
                 Novo Produto
             </button>
+            <?php endif; ?>
         </div>
 
         <?php if (isset($_GET['mensagem'])): ?>
@@ -101,7 +108,9 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Quantidade</th>
                                 <th>Unidade</th>
                                 <th>Localização</th>
+                                <?php if ($pode_editar): ?>
                                 <th>Ações</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -116,10 +125,12 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </td>
                                 <td><?php echo htmlspecialchars($produto['unidade_sigla']); ?></td>
                                 <td><?php echo htmlspecialchars($produto['localizacao_nome']); ?></td>
+                                <?php if ($pode_editar): ?>
                                 <td>
                                     <a href="/gesp/pages/editar_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-primary">Editar</a>
                                     <a href="/gesp/pages/excluir_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este produto?')">Excluir</a>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -129,6 +140,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <?php if ($pode_editar): ?>
     <!-- Modal de Cadastro -->
     <div class="modal fade" id="cadastroModal" tabindex="-1">
         <div class="modal-dialog">
@@ -160,7 +172,9 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <select class="form-select" id="unidade_id" name="unidade_id" required>
                                 <option value="">Selecione uma unidade</option>
                                 <?php foreach ($unidades as $unidade): ?>
-                                    <option value="<?php echo $unidade['unidade_id']; ?>"><?php echo htmlspecialchars($unidade['nome']); ?> (<?php echo htmlspecialchars($unidade['sigla']); ?>)</option>
+                                    <option value="<?php echo $unidade['unidade_id']; ?>">
+                                        <?php echo htmlspecialchars($unidade['nome']); ?> (<?php echo htmlspecialchars($unidade['sigla']); ?>)
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -169,7 +183,9 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <select class="form-select" id="localizacao_id" name="localizacao_id" required>
                                 <option value="">Selecione uma localização</option>
                                 <?php foreach ($localizacoes as $localizacao): ?>
-                                    <option value="<?php echo $localizacao['localizacao_id']; ?>"><?php echo htmlspecialchars($localizacao['nome']); ?></option>
+                                    <option value="<?php echo $localizacao['localizacao_id']; ?>">
+                                        <?php echo htmlspecialchars($localizacao['nome']); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -182,6 +198,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

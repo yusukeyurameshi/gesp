@@ -1,9 +1,5 @@
 <?php
-require_once 'includes/config.php';
-
-// Destruir a sessão
+session_start();
 session_destroy();
-
-// Redirecionar para a página de login
-header('Location: /gesp/login.php');
+header('Location: login.php');
 exit; 

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 
 // Buscar produtos e unidades para o combo box
@@ -8,6 +9,8 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Processar formulário de movimentação
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
+    requireMovimentacaoPermission();
+    
     $produto_id = intval($_POST['produto_id']);
     $quantidade = floatval($_POST['quantidade']);
     $tipo = $_POST['tipo'];
@@ -45,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
                         // Confirmar transação
                         $pdo->commit();
 
-                        header('Location: /gesp/pages/movimentacoes.php?mensagem=Movimentação registrada com sucesso!');
+                        header('Location: ' . SITE_URL . '/pages/movimentacoes.php?mensagem=Movimentação registrada com sucesso!');
                         exit;
                     } catch (PDOException $e) {
                         // Reverter transação em caso de erro
@@ -71,14 +74,19 @@ $stmt = $pdo->query("
     ORDER BY m.data DESC, m.movimentacao_id DESC
 ");
 $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Verificar se o usuário tem permissão para criar movimentações
+$pode_movimentar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
+$pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administrador';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movimentações - Sistema de Almoxarifado</title>
+    <title>Movimentações - <?php echo SITE_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <?php include '../includes/navbar.php'; ?>
@@ -86,9 +94,11 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Movimentações</h1>
+            <?php if ($pode_movimentar): ?>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#movimentacaoModal">
                 Nova Movimentação
             </button>
+            <?php endif; ?>
         </div>
 
         <?php if (isset($_GET['mensagem'])): ?>
@@ -118,6 +128,9 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Tipo</th>
                                 <th>Observação</th>
                                 <th>Usuário</th>
+                                <?php if ($pode_editar): ?>
+                                <th>Ações</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,6 +151,16 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </td>
                                 <td><?php echo htmlspecialchars($movimentacao['observacao']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['usuario_nome']); ?></td>
+                                <?php if ($pode_editar): ?>
+                                <td>
+                                    <a href="editar_movimentacao.php?id=<?php echo $movimentacao['movimentacao_id']; ?>" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <a href="excluir_movimentacao.php?id=<?php echo $movimentacao['movimentacao_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta movimentação?')">
+                                        <i class="fas fa-trash"></i> Excluir
+                                    </a>
+                                </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -147,6 +170,7 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <?php if ($pode_movimentar): ?>
     <!-- Modal de Movimentação -->
     <div class="modal fade" id="movimentacaoModal" tabindex="-1">
         <div class="modal-dialog">
@@ -192,6 +216,7 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

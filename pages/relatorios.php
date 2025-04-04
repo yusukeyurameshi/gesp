@@ -12,19 +12,30 @@ $stmt = $pdo->query("
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Buscar movimentações do mês
+// Buscar movimentações dos últimos 30 dias
 $stmt = $pdo->query("
-    SELECT m.*, p.codigo as produto_codigo, p.nome as produto_nome, u.sigla as unidade_sigla, l.nome as localizacao_nome, us.nome as usuario_nome 
+    SELECT m.*, p.codigo as produto_codigo, p.nome as produto_nome, 
+           u.sigla as unidade_sigla, l.nome as localizacao_nome, us.nome as usuario_nome
     FROM movimentacoes m 
     JOIN produtos p ON m.produto_id = p.produto_id 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
     LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
     JOIN usuarios us ON m.usuario_id = us.usuario_id 
-    WHERE MONTH(m.data) = MONTH(CURRENT_DATE()) 
-    AND YEAR(m.data) = YEAR(CURRENT_DATE()) 
-    ORDER BY m.data DESC
+    WHERE m.data >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    ORDER BY m.data DESC, m.movimentacao_id DESC
 ");
 $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Calcular totais dos últimos 30 dias
+$stmt = $pdo->query("
+    SELECT 
+        COUNT(*) as total_movimentacoes,
+        SUM(CASE WHEN tipo = 'entrada' THEN quantidade ELSE 0 END) as total_entradas,
+        SUM(CASE WHEN tipo = 'saida' THEN quantidade ELSE 0 END) as total_saidas
+    FROM movimentacoes 
+    WHERE data >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+");
+$totais = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Calcular totais
 $total_produtos = count($produtos);
@@ -44,6 +55,14 @@ foreach ($produtos as $produto) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatórios - <?php echo SITE_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        .unidade-cursiva {
+            font-family: 'Dancing Script', cursive;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+    </style>
 </head>
 <body>
     <?php include '../includes/navbar.php'; ?>
@@ -71,7 +90,7 @@ foreach ($produtos as $produto) {
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Movimentações no Mês</h5>
+                        <h5 class="card-title">Movimentações dos Últimos 30 Dias</h5>
                         <p class="card-text display-4"><?php echo $total_movimentacoes; ?></p>
                     </div>
                 </div>
@@ -104,12 +123,40 @@ foreach ($produtos as $produto) {
                                         <?php echo number_format($produto['quantidade'], 2, ',', '.'); ?>
                                     </span>
                                 </td>
-                                <td><?php echo htmlspecialchars($produto['unidade_sigla']); ?></td>
+                                <td><span class="unidade-cursiva"><?php echo htmlspecialchars($produto['unidade_sigla']); ?></span></td>
                                 <td><?php echo htmlspecialchars($produto['localizacao_nome']); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Movimentações dos Últimos 30 Dias</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Total de Movimentações</h6>
+                            <h3><?php echo $totais['total_movimentacoes']; ?></h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Total de Entradas</h6>
+                            <h3 class="text-success"><?php echo $totais['total_entradas']; ?></h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Total de Saídas</h6>
+                            <h3 class="text-danger"><?php echo $totais['total_saidas']; ?></h3>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -140,7 +187,7 @@ foreach ($produtos as $produto) {
                                 <td><?php echo htmlspecialchars($movimentacao['localizacao_nome']); ?></td>
                                 <td>
                                     <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
-                                        <?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?> <?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?>
+                                        <?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?> <span class="unidade-cursiva"><?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?></span>
                                     </span>
                                 </td>
                                 <td>

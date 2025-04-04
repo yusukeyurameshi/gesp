@@ -44,9 +44,10 @@ CREATE TABLE IF NOT EXISTS produtos (
 CREATE TABLE IF NOT EXISTS usuarios (
     usuario_id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    username VARCHAR(50) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL,
-    cargo VARCHAR(50) NOT NULL,
+    perfil ENUM('Administrador', 'Colaborador', 'Leitor') NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -67,23 +68,24 @@ CREATE TABLE IF NOT EXISTS movimentacoes (
 
 -- Inserir unidades padrão
 INSERT INTO unidades (nome, sigla) VALUES
-('Unidade', 'UN'),
-('Quilograma', 'KG'),
-('Metro', 'M'),
-('Litro', 'L'),
-('Metro Quadrado', 'M²'),
-('Metro Cúbico', 'M³'),
-('Caixa', 'CX'),
-('Pacote', 'PC'),
-('Rolo', 'RL'),
-('Fardo', 'FD');
+('Unidade', 'un'),
+('Quilograma', 'kg'),
+('Metro', 'm'),
+('Litro', 'l'),
+('Metro Quadrado', 'm²'),
+('Metro Cúbico', 'm³'),
+('Caixa', 'cx'),
+('Pacote', 'pct'),
+('Rolo', 'rl'),
+('Fardo', 'fd');
 
 
 
 -- Inserir usuário padrão (senha: admin123)
-INSERT INTO usuarios (nome, email, senha, cargo) VALUES
-('Administrador', 'admin@admin.com', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador'); 
-
+INSERT INTO usuarios (nome, username, senha, perfil, ativo) VALUES
+('Administrador', 'admin', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador', FALSE),
+('xxxxxx', 'xxxxx', '$2y$10$Rv9ttEAArv7AYsuhTvJ6.uDO5Fx2iLynF0GPZ1FOAlXPPqbghKgMe', 'Administrador', TRUE); 
+/*
 INSERT INTO localizacoes (nome, descricao) VALUES
 ('Prateleira A1', 'Prateleira A, posição 1'),
 ('Prateleira A2', 'Prateleira A, posição 2'),
@@ -109,13 +111,12 @@ INSERT INTO produtos (codigo, nome, quantidade, quantidade_minima, unidade_id, l
 ('P009', 'Papel Toalha', 20.00, 4.00, 8, 9),
 ('P010', 'Fita Adesiva', 15.00, 3.00, 9, 10);
 
--- Inserir localizações padrão
-
 -- Inserir movimentações de exemplo
 INSERT INTO movimentacoes (produto_id, quantidade, tipo, data, observacao, usuario_id) VALUES
-(1, 100.00, 'entrada', '2024-03-01 10:00:00', 'Compra de material', 1),
-(2, 5.00, 'saida', '2024-03-01 14:30:00', 'Uso em projeto', 1),
-(3, 20.00, 'entrada', '2024-03-02 09:15:00', 'Reposição de estoque', 1),
-(4, 3.00, 'saida', '2024-03-02 16:45:00', 'Limpeza', 1),
-(5, 10.00, 'entrada', '2024-03-03 11:20:00', 'Compra de material', 1);
+(1, 100.00, 'entrada', '2025-03-04 10:00:00', 'Compra de material', 1),
+(2, 5.00, 'saida', '2025-03-04 14:30:00', 'Uso em projeto', 1),
+(3, 20.00, 'entrada', '2025-03-05 09:15:00', 'Reposição de estoque', 1),
+(4, 3.00, 'saida', '2025-03-05 16:45:00', 'Limpeza', 1),
+(5, 10.00, 'entrada', '2025-03-06 11:20:00', 'Compra de material', 1);
 
+*/
