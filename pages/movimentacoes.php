@@ -136,7 +136,7 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
                         <tbody>
                             <?php foreach ($movimentacoes as $movimentacao): ?>
                             <tr>
-                                <td><?php echo date('d/m/Y H:i', strtotime($movimentacao['data'])); ?></td>
+                                <td><?php echo date('d/m/Y H:i:s', strtotime($movimentacao['data'])); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['produto_codigo'] . ' - ' . $movimentacao['produto_nome']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['localizacao_nome']); ?></td>
                                 <td>
