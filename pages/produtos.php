@@ -48,7 +48,7 @@ $stmt = $pdo->query("
     FROM produtos p 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
     LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    ORDER BY p.nome
+    ORDER BY p.codigo
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

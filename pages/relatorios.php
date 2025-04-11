@@ -8,7 +8,7 @@ $stmt = $pdo->query("
     FROM produtos p 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
     LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    ORDER BY p.nome
+    ORDER BY p.codigo
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -30,8 +30,8 @@ $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->query("
     SELECT 
         COUNT(*) as total_movimentacoes,
-        SUM(CASE WHEN tipo = 'entrada' THEN quantidade ELSE 0 END) as total_entradas,
-        SUM(CASE WHEN tipo = 'saida' THEN quantidade ELSE 0 END) as total_saidas
+        SUM(CASE WHEN tipo = 'entrada' THEN 1 ELSE 0 END) as total_entradas,
+        SUM(CASE WHEN tipo = 'saida' THEN 1 ELSE 0 END) as total_saidas
     FROM movimentacoes 
     WHERE data >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 ");
@@ -162,9 +162,9 @@ foreach ($produtos as $produto) {
         </div>
 
         <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Movimentações do Mês</h5>
-            </div>
+            <!--<div class="card-header">
+                <h5 class="card-title mb-0">Movimentações dos Últimos 30 Dias</h5>
+            </div>-->
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">

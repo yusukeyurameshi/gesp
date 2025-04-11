@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 
 // Buscar produtos e unidades para o combo box
-$stmt = $pdo->query("SELECT p.*, u.nome as unidade_nome, u.sigla as unidade_sigla, l.nome as localizacao_nome FROM produtos p JOIN unidades u ON p.unidade_id = u.unidade_id LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id ORDER BY p.nome");
+$stmt = $pdo->query("SELECT p.*, u.nome as unidade_nome, u.sigla as unidade_sigla, l.nome as localizacao_nome FROM produtos p JOIN unidades u ON p.unidade_id = u.unidade_id LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id ORDER BY p.codigo");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Processar formulário de movimentação
@@ -136,7 +136,7 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
                         <tbody>
                             <?php foreach ($movimentacoes as $movimentacao): ?>
                             <tr>
-                                <td><?php echo date('d/m/Y H:i', strtotime($movimentacao['data'])); ?></td>
+                                <td><?php echo date('d/m/Y H:i:s', strtotime($movimentacao['data'])); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['produto_codigo'] . ' - ' . $movimentacao['produto_nome']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['localizacao_nome']); ?></td>
                                 <td>
