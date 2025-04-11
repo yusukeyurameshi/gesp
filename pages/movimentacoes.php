@@ -3,9 +3,29 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 
-// Buscar produtos e unidades para o combo box
-$stmt = $pdo->query("SELECT p.*, u.nome as unidade_nome, u.sigla as unidade_sigla, l.nome as localizacao_nome FROM produtos p JOIN unidades u ON p.unidade_id = u.unidade_id LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id ORDER BY p.codigo");
+// Buscar produtos
+$stmt = $pdo->query("
+    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome, tp.nome as tipo_nome
+    FROM produtos p 
+    LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
+    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id
+    LEFT JOIN tipos_produtos tp ON p.tipo_id = tp.tipo_id
+    ORDER BY p.nome
+");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Buscar movimentações
+$stmt = $pdo->query("
+    SELECT m.*, p.nome as produto_nome, 
+           u.sigla as unidade_sigla, l.nome as localizacao_nome, us.nome as usuario_nome
+    FROM movimentacoes m 
+    JOIN produtos p ON m.produto_id = p.produto_id 
+    LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
+    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
+    JOIN usuarios us ON m.usuario_id = us.usuario_id 
+    ORDER BY m.data DESC, m.movimentacao_id DESC
+");
+$movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Processar formulário de movimentação
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
@@ -20,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
         $erro = "Todos os campos são obrigatórios.";
     } else {
         try {
-            // Buscar dados do produto
+            // Verificar se o produto existe
             $stmt = $pdo->prepare("SELECT quantidade FROM produtos WHERE produto_id = ?");
             $stmt->execute([$produto_id]);
             $produto = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -30,31 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
             } else {
                 // Verificar se há estoque suficiente para saída
                 if ($tipo === 'saida' && $produto['quantidade'] < $quantidade) {
-                    $erro = "Estoque insuficiente para esta movimentação.";
+                    $erro = "Quantidade insuficiente em estoque.";
                 } else {
-                    // Iniciar transação
-                    $pdo->beginTransaction();
+                    // Inserir movimentação
+                    $stmt = $pdo->prepare("INSERT INTO movimentacoes (produto_id, quantidade, tipo, data, observacao, usuario_id) VALUES (?, ?, ?, NOW(), ?, ?)");
+                    $stmt->execute([$produto_id, $quantidade, $tipo, $observacao, $_SESSION['usuario_id']]);
 
-                    try {
-                        // Atualizar quantidade do produto
-                        $nova_quantidade = $tipo === 'entrada' ? $produto['quantidade'] + $quantidade : $produto['quantidade'] - $quantidade;
-                        $stmt = $pdo->prepare("UPDATE produtos SET quantidade = ? WHERE produto_id = ?");
-                        $stmt->execute([$nova_quantidade, $produto_id]);
+                    // Atualizar quantidade do produto
+                    $nova_quantidade = $tipo === 'entrada' ? $produto['quantidade'] + $quantidade : $produto['quantidade'] - $quantidade;
+                    $stmt = $pdo->prepare("UPDATE produtos SET quantidade = ? WHERE produto_id = ?");
+                    $stmt->execute([$nova_quantidade, $produto_id]);
 
-                        // Registrar movimentação
-                        $stmt = $pdo->prepare("INSERT INTO movimentacoes (produto_id, quantidade, tipo, data, observacao, usuario_id) VALUES (?, ?, ?, NOW(), ?, ?)");
-                        $stmt->execute([$produto_id, $quantidade, $tipo, $observacao, $_SESSION['usuario_id']]);
-
-                        // Confirmar transação
-                        $pdo->commit();
-
-                        header('Location: ' . SITE_URL . '/pages/movimentacoes.php?mensagem=Movimentação registrada com sucesso!');
-                        exit;
-                    } catch (PDOException $e) {
-                        // Reverter transação em caso de erro
-                        $pdo->rollBack();
-                        throw $e;
-                    }
+                    header('Location: /gesp/pages/movimentacoes.php?mensagem=Movimentação registrada com sucesso!');
+                    exit;
                 }
             }
         } catch (PDOException $e) {
@@ -63,21 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movimentar'])) {
     }
 }
 
-// Buscar movimentações
-$stmt = $pdo->query("
-    SELECT m.*, p.codigo as produto_codigo, p.nome as produto_nome, u.sigla as unidade_sigla, l.nome as localizacao_nome, us.nome as usuario_nome 
-    FROM movimentacoes m 
-    JOIN produtos p ON m.produto_id = p.produto_id 
-    LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
-    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    JOIN usuarios us ON m.usuario_id = us.usuario_id 
-    ORDER BY m.data DESC, m.movimentacao_id DESC
-");
-$movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Verificar se o usuário tem permissão para criar movimentações
+// Verificar se o usuário tem permissão para movimentar
 $pode_movimentar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
-$pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administrador';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -86,7 +81,6 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movimentações - <?php echo SITE_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <?php include '../includes/navbar.php'; ?>
@@ -108,6 +102,13 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
             </div>
         <?php endif; ?>
 
+        <?php if (isset($_GET['erro'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php echo htmlspecialchars($_GET['erro']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
         <?php if (isset($erro)): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <?php echo htmlspecialchars($erro); ?>
@@ -123,44 +124,29 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
                             <tr>
                                 <th>Data</th>
                                 <th>Produto</th>
-                                <th>Localização</th>
-                                <th>Quantidade</th>
                                 <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Unidade</th>
+                                <th>Localização</th>
                                 <th>Observação</th>
                                 <th>Usuário</th>
-                                <?php if ($pode_editar): ?>
-                                <th>Ações</th>
-                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($movimentacoes as $movimentacao): ?>
                             <tr>
-                                <td><?php echo date('d/m/Y H:i:s', strtotime($movimentacao['data'])); ?></td>
-                                <td><?php echo htmlspecialchars($movimentacao['produto_codigo'] . ' - ' . $movimentacao['produto_nome']); ?></td>
+                                <td><?php echo date('d/m/Y H:i', strtotime($movimentacao['data'])); ?></td>
+                                <td><?php echo htmlspecialchars($movimentacao['produto_nome']); ?></td>
+                                <td>
+                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
+                                        <?php echo $movimentacao['tipo'] === 'entrada' ? 'Entrada' : 'Saída'; ?>
+                                    </span>
+                                </td>
+                                <td><?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?></td>
+                                <td><?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['localizacao_nome']); ?></td>
-                                <td>
-                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
-                                        <?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?> <?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
-                                        <?php echo ucfirst($movimentacao['tipo']); ?>
-                                    </span>
-                                </td>
                                 <td><?php echo htmlspecialchars($movimentacao['observacao']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['usuario_nome']); ?></td>
-                                <?php if ($pode_editar): ?>
-                                <td>
-                                    <a href="editar_movimentacao.php?id=<?php echo $movimentacao['movimentacao_id']; ?>" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-edit"></i> Editar
-                                    </a>
-                                    <a href="excluir_movimentacao.php?id=<?php echo $movimentacao['movimentacao_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta movimentação?')">
-                                        <i class="fas fa-trash"></i> Excluir
-                                    </a>
-                                </td>
-                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -187,7 +173,8 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
                                 <option value="">Selecione um produto</option>
                                 <?php foreach ($produtos as $produto): ?>
                                     <option value="<?php echo $produto['produto_id']; ?>">
-                                        <?php echo htmlspecialchars($produto['codigo'] . ' - ' . $produto['nome'] . ' (' . $produto['localizacao_nome'] . ')'); ?>
+                                        <?php echo htmlspecialchars($produto['nome']); ?> 
+                                        (<?php echo htmlspecialchars($produto['tipo_nome']); ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -210,7 +197,7 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] === 'Administra
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" name="movimentar" class="btn btn-primary">Registrar Movimentação</button>
+                        <button type="submit" name="movimentar" class="btn btn-primary">Registrar</button>
                     </div>
                 </form>
             </div>

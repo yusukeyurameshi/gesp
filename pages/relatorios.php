@@ -4,17 +4,18 @@ requireLogin();
 
 // Buscar produtos
 $stmt = $pdo->query("
-    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome 
+    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome, tp.nome as tipo_nome
     FROM produtos p 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
-    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    ORDER BY p.codigo
+    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id
+    LEFT JOIN tipos_produtos tp ON p.tipo_id = tp.tipo_id
+    ORDER BY p.nome
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Buscar movimentações dos últimos 30 dias
 $stmt = $pdo->query("
-    SELECT m.*, p.codigo as produto_codigo, p.nome as produto_nome, 
+    SELECT m.*, p.nome as produto_nome, 
            u.sigla as unidade_sigla, l.nome as localizacao_nome, us.nome as usuario_nome
     FROM movimentacoes m 
     JOIN produtos p ON m.produto_id = p.produto_id 
@@ -68,10 +69,19 @@ foreach ($produtos as $produto) {
     <?php include '../includes/navbar.php'; ?>
 
     <div class="container mt-4">
-        <h1 class="mb-4">Relatórios</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Relatórios</h1>
+        </div>
+
+        <?php if (isset($_GET['erro'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php echo htmlspecialchars($_GET['erro']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Total de Produtos</h5>
@@ -79,19 +89,30 @@ foreach ($produtos as $produto) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Produtos com Estoque Baixo</h5>
+                        <h5 class="card-title">Produtos com Baixo Estoque</h5>
                         <p class="card-text display-4"><?php echo $produtos_baixo_estoque; ?></p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Movimentações dos Últimos 30 Dias</h5>
+                        <h5 class="card-title">Movimentações (30 dias)</h5>
                         <p class="card-text display-4"><?php echo $total_movimentacoes; ?></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Saldo (30 dias)</h5>
+                        <p class="card-text">
+                            <span class="text-success">+<?php echo $totais['total_entradas']; ?></span> /
+                            <span class="text-danger">-<?php echo $totais['total_saidas']; ?></span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -106,8 +127,8 @@ foreach ($produtos as $produto) {
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Código</th>
-                                <th>Produto</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
                                 <th>Quantidade</th>
                                 <th>Unidade</th>
                                 <th>Localização</th>
@@ -116,8 +137,8 @@ foreach ($produtos as $produto) {
                         <tbody>
                             <?php foreach ($produtos as $produto): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($produto['codigo']); ?></td>
                                 <td><?php echo htmlspecialchars($produto['nome']); ?></td>
+                                <td><?php echo htmlspecialchars($produto['tipo_nome']); ?></td>
                                 <td>
                                     <span class="badge bg-<?php echo $produto['quantidade'] <= $produto['quantidade_minima'] ? 'danger' : 'success'; ?>">
                                         <?php echo number_format($produto['quantidade'], 2, ',', '.'); ?>
@@ -135,36 +156,8 @@ foreach ($produtos as $produto) {
 
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Movimentações dos Últimos 30 Dias</h5>
+                <h5 class="card-title mb-0">Movimentações Recentes</h5>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <h6>Total de Movimentações</h6>
-                            <h3><?php echo $totais['total_movimentacoes']; ?></h3>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <h6>Total de Entradas</h6>
-                            <h3 class="text-success"><?php echo $totais['total_entradas']; ?></h3>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <h6>Total de Saídas</h6>
-                            <h3 class="text-danger"><?php echo $totais['total_saidas']; ?></h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <!--<div class="card-header">
-                <h5 class="card-title mb-0">Movimentações dos Últimos 30 Dias</h5>
-            </div>-->
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -172,9 +165,10 @@ foreach ($produtos as $produto) {
                             <tr>
                                 <th>Data</th>
                                 <th>Produto</th>
-                                <th>Localização</th>
-                                <th>Quantidade</th>
                                 <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Unidade</th>
+                                <th>Localização</th>
                                 <th>Observação</th>
                                 <th>Usuário</th>
                             </tr>
@@ -183,18 +177,15 @@ foreach ($produtos as $produto) {
                             <?php foreach ($movimentacoes as $movimentacao): ?>
                             <tr>
                                 <td><?php echo date('d/m/Y H:i', strtotime($movimentacao['data'])); ?></td>
-                                <td><?php echo htmlspecialchars($movimentacao['produto_codigo'] . ' - ' . $movimentacao['produto_nome']); ?></td>
+                                <td><?php echo htmlspecialchars($movimentacao['produto_nome']); ?></td>
+                                <td>
+                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
+                                        <?php echo $movimentacao['tipo'] === 'entrada' ? 'Entrada' : 'Saída'; ?>
+                                    </span>
+                                </td>
+                                <td><?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?></td>
+                                <td><?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['localizacao_nome']); ?></td>
-                                <td>
-                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
-                                        <?php echo number_format($movimentacao['quantidade'], 2, ',', '.'); ?> <span class="unidade-cursiva"><?php echo htmlspecialchars($movimentacao['unidade_sigla']); ?></span>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-<?php echo $movimentacao['tipo'] === 'entrada' ? 'success' : 'danger'; ?>">
-                                        <?php echo ucfirst($movimentacao['tipo']); ?>
-                                    </span>
-                                </td>
                                 <td><?php echo htmlspecialchars($movimentacao['observacao']); ?></td>
                                 <td><?php echo htmlspecialchars($movimentacao['usuario_nome']); ?></td>
                             </tr>

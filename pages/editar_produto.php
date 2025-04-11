@@ -4,7 +4,7 @@ requireLogin();
 requireEditPermission();
 
 if (!isset($_GET['id'])) {
-    header('Location: /gesp/pages/produtos.php?erro=ID não fornecido');
+    header('Location: ' . SITE_URL . '/pages/produtos.php?erro=ID não fornecido');
     exit;
 }
 
@@ -18,6 +18,10 @@ $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->query("SELECT * FROM localizacoes ORDER BY nome");
 $localizacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Buscar tipos de produtos para o combo box
+$stmt = $pdo->query("SELECT * FROM tipos_produtos ORDER BY nome");
+$tipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Buscar dados do produto
 try {
     $stmt = $pdo->prepare("SELECT * FROM produtos WHERE produto_id = ?");
@@ -25,38 +29,31 @@ try {
     $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$produto) {
-        header('Location: /gesp/pages/produtos.php?erro=Produto não encontrado');
+        header('Location: ' . SITE_URL . '/pages/produtos.php?erro=Produto não encontrado');
         exit;
     }
 } catch (PDOException $e) {
-    header('Location: /gesp/pages/produtos.php?erro=Erro ao buscar produto');
+    header('Location: ' . SITE_URL . '/pages/produtos.php?erro=Erro ao buscar produto');
     exit;
 }
 
 // Processar formulário de edição
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $codigo = trim($_POST['codigo']);
     $nome = trim($_POST['nome']);
     $quantidade = floatval($_POST['quantidade']);
     $quantidade_minima = floatval($_POST['quantidade_minima']);
     $unidade_id = intval($_POST['unidade_id']);
     $localizacao_id = intval($_POST['localizacao_id']);
+    $tipo_id = intval($_POST['tipo_id']);
 
-    if (empty($codigo) || empty($nome) || $unidade_id <= 0 || $localizacao_id <= 0) {
+    if (empty($nome) || $unidade_id <= 0 || $localizacao_id <= 0 || $tipo_id <= 0) {
         $erro = "Todos os campos são obrigatórios.";
     } else {
         try {
-            // Verificar se já existe um produto com este código (exceto o atual)
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE codigo = ? AND produto_id != ?");
-            $stmt->execute([$codigo, $id]);
-            if ($stmt->fetchColumn() > 0) {
-                $erro = "Já existe um produto com este código.";
-            } else {
-                $stmt = $pdo->prepare("UPDATE produtos SET codigo = ?, nome = ?, quantidade = ?, quantidade_minima = ?, unidade_id = ?, localizacao_id = ? WHERE produto_id = ?");
-                $stmt->execute([$codigo, $nome, $quantidade, $quantidade_minima, $unidade_id, $localizacao_id, $id]);
-                header('Location: /gesp/pages/produtos.php?mensagem=Produto atualizado com sucesso!');
-                exit;
-            }
+            $stmt = $pdo->prepare("UPDATE produtos SET nome = ?, quantidade = ?, quantidade_minima = ?, unidade_id = ?, localizacao_id = ?, tipo_id = ? WHERE produto_id = ?");
+            $stmt->execute([$nome, $quantidade, $quantidade_minima, $unidade_id, $localizacao_id, $tipo_id, $id]);
+            header('Location: ' . SITE_URL . '/pages/produtos.php?mensagem=Produto atualizado com sucesso!');
+            exit;
         } catch (PDOException $e) {
             $erro = "Erro ao atualizar produto: " . $e->getMessage();
         }
@@ -77,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Editar Produto</h1>
-            <a href="/gesp/pages/produtos.php" class="btn btn-secondary">Voltar</a>
+            <a href="<?php echo SITE_URL; ?>/pages/produtos.php" class="btn btn-secondary">Voltar</a>
         </div>
 
         <?php if (isset($erro)): ?>
@@ -91,12 +88,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
-                        <label for="codigo" class="form-label">Código</label>
-                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo htmlspecialchars($produto['codigo']); ?>" required>
-                    </div>
-                    <div class="mb-3">
                         <label for="nome" class="form-label">Nome</label>
                         <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($produto['nome']); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipo_id" class="form-label">Tipo</label>
+                        <select class="form-select" id="tipo_id" name="tipo_id" required>
+                            <option value="">Selecione um tipo</option>
+                            <?php foreach ($tipos as $tipo): ?>
+                                <option value="<?php echo $tipo['tipo_id']; ?>" <?php echo $tipo['tipo_id'] == $produto['tipo_id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($tipo['nome']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="quantidade" class="form-label">Quantidade</label>
@@ -128,7 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
                 </form>
             </div>
         </div>

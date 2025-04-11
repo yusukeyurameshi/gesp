@@ -4,11 +4,12 @@ requireLogin();
 
 // Buscar produtos
 $stmt = $pdo->query("
-    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome 
+    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome, tp.nome as tipo_nome
     FROM produtos p 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
-    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    ORDER BY p.nome
+    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id
+    LEFT JOIN tipos_produtos tp ON p.tipo_id = tp.tipo_id
+    ORDER BY tp.nome, p.nome
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -42,7 +43,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Código</th>
+                                <th>Tipo</th>
                                 <th>Produto</th>
                                 <th>Quantidade</th>
                                 <th>Unidade</th>
@@ -52,7 +53,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <tbody>
                             <?php foreach ($produtos as $produto): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($produto['codigo']); ?></td>
+                                <td><?php echo htmlspecialchars($produto['tipo_nome']); ?></td>
                                 <td><?php echo htmlspecialchars($produto['nome']); ?></td>
                                 <td>
                                     <span class="badge bg-<?php echo $produto['quantidade'] <= $produto['quantidade_minima'] ? 'danger' : 'success'; ?>">

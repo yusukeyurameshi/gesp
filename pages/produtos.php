@@ -6,28 +6,21 @@ requireLogin();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cadastrar'])) {
     requireEditPermission();
     
-    $codigo = trim($_POST['codigo']);
     $nome = trim($_POST['nome']);
     $quantidade = floatval($_POST['quantidade']);
     $quantidade_minima = floatval($_POST['quantidade_minima']);
     $unidade_id = intval($_POST['unidade_id']);
     $localizacao_id = intval($_POST['localizacao_id']);
+    $tipo_id = intval($_POST['tipo_id']);
 
-    if (empty($codigo) || empty($nome) || $unidade_id <= 0 || $localizacao_id <= 0) {
+    if (empty($nome) || $unidade_id <= 0 || $localizacao_id <= 0 || $tipo_id <= 0) {
         $erro = "Todos os campos são obrigatórios.";
     } else {
         try {
-            // Verificar se já existe um produto com este código
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE codigo = ?");
-            $stmt->execute([$codigo]);
-            if ($stmt->fetchColumn() > 0) {
-                $erro = "Já existe um produto com este código.";
-            } else {
-                $stmt = $pdo->prepare("INSERT INTO produtos (codigo, nome, quantidade, quantidade_minima, unidade_id, localizacao_id) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$codigo, $nome, $quantidade, $quantidade_minima, $unidade_id, $localizacao_id]);
-                header('Location: /gesp/pages/produtos.php?mensagem=Produto cadastrado com sucesso!');
-                exit;
-            }
+            $stmt = $pdo->prepare("INSERT INTO produtos (nome, quantidade, quantidade_minima, unidade_id, localizacao_id, tipo_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$nome, $quantidade, $quantidade_minima, $unidade_id, $localizacao_id, $tipo_id]);
+            header('Location: ' . SITE_URL . '/pages/produtos.php?mensagem=Produto cadastrado com sucesso!');
+            exit;
         } catch (PDOException $e) {
             $erro = "Erro ao cadastrar produto: " . $e->getMessage();
         }
@@ -42,13 +35,18 @@ $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->query("SELECT * FROM localizacoes ORDER BY nome");
 $localizacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Buscar tipos de produtos para o combo box
+$stmt = $pdo->query("SELECT * FROM tipos_produtos ORDER BY nome");
+$tipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Buscar produtos
 $stmt = $pdo->query("
-    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome 
+    SELECT p.*, u.sigla as unidade_sigla, l.nome as localizacao_nome, tp.nome as tipo_nome
     FROM produtos p 
     LEFT JOIN unidades u ON p.unidade_id = u.unidade_id 
-    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id 
-    ORDER BY p.codigo
+    LEFT JOIN localizacoes l ON p.localizacao_id = l.localizacao_id
+    LEFT JOIN tipos_produtos tp ON p.tipo_id = tp.tipo_id
+    ORDER BY p.nome
 ");
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -103,8 +101,8 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Código</th>
                                 <th>Nome</th>
+                                <th>Tipo</th>
                                 <th>Quantidade</th>
                                 <th>Unidade</th>
                                 <th>Localização</th>
@@ -116,8 +114,8 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
                         <tbody>
                             <?php foreach ($produtos as $produto): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($produto['codigo']); ?></td>
                                 <td><?php echo htmlspecialchars($produto['nome']); ?></td>
+                                <td><?php echo htmlspecialchars($produto['tipo_nome']); ?></td>
                                 <td>
                                     <span class="badge bg-<?php echo $produto['quantidade'] <= $produto['quantidade_minima'] ? 'danger' : 'success'; ?>">
                                         <?php echo number_format($produto['quantidade'], 2, ',', '.'); ?>
@@ -127,8 +125,8 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
                                 <td><?php echo htmlspecialchars($produto['localizacao_nome']); ?></td>
                                 <?php if ($pode_editar): ?>
                                 <td>
-                                    <a href="/gesp/pages/editar_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-primary">Editar</a>
-                                    <a href="/gesp/pages/excluir_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este produto?')">Excluir</a>
+                                    <a href="<?php echo SITE_URL; ?>/pages/editar_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-primary">Editar</a>
+                                    <a href="<?php echo SITE_URL; ?>/pages/excluir_produto.php?id=<?php echo $produto['produto_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este produto?')">Excluir</a>
                                 </td>
                                 <?php endif; ?>
                             </tr>
@@ -152,12 +150,19 @@ $pode_editar = isset($_SESSION['perfil']) && $_SESSION['perfil'] !== 'Leitor';
                 <form method="POST">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="codigo" class="form-label">Código</label>
-                            <input type="text" class="form-control" id="codigo" name="codigo" required>
-                        </div>
-                        <div class="mb-3">
                             <label for="nome" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="nome" name="nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tipo_id" class="form-label">Tipo</label>
+                            <select class="form-select" id="tipo_id" name="tipo_id" required>
+                                <option value="">Selecione um tipo</option>
+                                <?php foreach ($tipos as $tipo): ?>
+                                    <option value="<?php echo $tipo['tipo_id']; ?>">
+                                        <?php echo htmlspecialchars($tipo['nome']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label for="quantidade" class="form-label">Quantidade</label>
